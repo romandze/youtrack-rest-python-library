@@ -20,11 +20,11 @@ class Logger(object):
 
     def logAction(self, action_name, yt, message, run_as=None):
         line = self._prepare_line(action_name, yt, message, run_as)
-        print line
+        print(line)
         try:
             if LOGGING: self.log_file.write(str(line) + '\n')
-        except UnicodeError, e:
-            print e
+        except UnicodeError as e:
+            print(e)
 
     def logError(self, error, action_name, yt, message, run_as=None):
         if LOGGING:
@@ -34,10 +34,10 @@ class Logger(object):
                 self.error_file.write(str(line) + '\n')
                 self.error_file.write(str(error) + '\n')
                 self.error_file.write('---------------------------------------------------------\n')
-                print line
-                print error
-            except UnicodeError, e:
-                print e
+                print(line)
+                print(error)
+            except UnicodeError as e:
+                print(e)
 
     def finalize(self):
         self.log_file.close()

@@ -54,9 +54,9 @@ class LinkImporter(object):
         links_to_import = []
         for link in links:
             if link.target not in self.created_issue_ids:
-                print self.header + ' failed to import link ' + self._getPrettyLink(link) + ' to ' + self.target_name + ' because ' + link.target + ' was not imported'
+                print(self.header + ' failed to import link ' + self._getPrettyLink(link) + ' to ' + self.target_name + ' because ' + link.target + ' was not imported')
             elif link.source not in self.created_issue_ids:
-                print self.header + 'failed to import link ' + self._getPrettyLink(link) + ' to ' + self.target_name + ' because ' + link.source + ' was not imported'
+                print(self.header + 'failed to import link ' + self._getPrettyLink(link) + ' to ' + self.target_name + ' because ' + link.source + ' was not imported')
             else:
                 links_to_import.append(link)
                 if len(links_to_import) == maxLinks:
@@ -69,7 +69,7 @@ class LinkImporter(object):
         if not self.verbose_mode:
             self.target.importLinks(links_to_import)
         for link in links_to_import:
-            print self.header + ' imported ' + self._getPrettyLink(link) + ' to ' + self.target_name
+            print(self.header + ' imported ' + self._getPrettyLink(link) + ' to ' + self.target_name)
 
     def importCollectedLinks(self):
         self.importLinks(self.links)
@@ -128,27 +128,27 @@ class IssueBinder(object):
     def __init__(self, s_to_m):
         self.s_to_m = copy.copy(s_to_m)
         self.m_to_s = {}
-        for s_id , m_id in s_to_m.items():
+        for s_id , m_id in list(s_to_m.items()):
             self.m_to_s[m_id] = s_id
 
     def slaveIssueIdToMasterIssueId(self, slave_issue_id):
-        return unicode(self.s_to_m[str(slave_issue_id)])
+        return str(self.s_to_m[str(slave_issue_id)])
 
     def masterIssueIdToSlaveIssueId(self, master_issue_id):
-        return unicode(self.m_to_s[str(master_issue_id)])
+        return str(self.m_to_s[str(master_issue_id)])
 
     def addBinding(self, master_id, slave_id):
         self.s_to_m[slave_id] = master_id
         self.m_to_s[master_id] = slave_id
 
     def getPermittedMasterIds(self):
-        return self.m_to_s.keys()
+        return list(self.m_to_s.keys())
 
     def getPermittedSlaveIds(self):
-        return self.s_to_m.keys()
+        return list(self.s_to_m.keys())
 
     def checkSlaveId(self, id):
-        return self.s_to_m.has_key(id)
+        return id in self.s_to_m
 
     def checkMasterId(self, id):
-        return self.m_to_s.has_key(id)
+        return id in self.m_to_s

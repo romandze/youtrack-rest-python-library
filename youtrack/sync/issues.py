@@ -29,8 +29,8 @@ class AsymmetricIssueMerger(object):
                 _slave_issue_id = self.issue_binder.masterIssueIdToSlaveIssueId(master_issue_id)
                 _result = _slave_issue_id
             self._sync(_master_issue_id, _slave_issue_id, self.last_run, self.current_run)
-        except KeyError, error:
-            print error
+        except KeyError as error:
+            print(error)
         return _result
 
     def _sync(self, master_issue_id, slave_issue_id, last_run, current_run):

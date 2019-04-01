@@ -9,7 +9,7 @@ PRIORITY_MAPPING= {'0':'Show-stopper', '1':'Critical', '2':'Major', '3':'Normal'
 def get_issue_changes(yt, issue_id, start=None, finish=None):
      result = yt.get_changes_for_issue(issue_id)
      after_ms = get_in_milliseconds(start) if start else 0
-     before_ms = get_in_milliseconds(finish) if finish else sys.maxint
+     before_ms = get_in_milliseconds(finish) if finish else sys.maxsize
      new_changes = []
      for change in result:
          change_time = change['updated']
@@ -53,7 +53,7 @@ class AsymmetricFieldsSynchronizer(object):
                 try:
                     command += self._create_command(field, field_name, to_yt == self.master)
                     changed_fields.add(field_name)
-                except Exception, error:
+                except Exception as error:
                     self.executors[to_yt].getLogger().logError(error, issue_id, to_yt, error.message)
         return command, run_as
 
@@ -65,7 +65,7 @@ class AsymmetricFieldsSynchronizer(object):
         command = ""
         for new_field_value in new_value:
             if new_field_value:
-                if field_name == 'priority' and new_field_value in PRIORITY_MAPPING.keys():
+                if field_name == 'priority' and new_field_value in list(PRIORITY_MAPPING.keys()):
                     new_field_value = PRIORITY_MAPPING[new_field_value]
                 command += field_name + " " + new_field_value + " "
         return command

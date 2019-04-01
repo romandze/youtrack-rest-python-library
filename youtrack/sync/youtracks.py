@@ -101,7 +101,7 @@ class YouTrackSynchronizer(object):
     def _apply_to_issues(self, issues_getter, action, excluded_ids=None, log_header=''):
         if not issues_getter or not action: return
         start = 0
-        print log_header + ' started...'
+        print(log_header + ' started...')
         issues = issues_getter(start, batch)
         processed_issue_ids_set = set([])
         while len(issues):
@@ -110,10 +110,10 @@ class YouTrackSynchronizer(object):
                 if not (excluded_ids and sync_id in excluded_ids):
                     action(issue)
                     processed_issue_ids_set.add(sync_id)
-            print log_header + ' processed ' + str(start + len(issues)) + ' issues'
+            print(log_header + ' processed ' + str(start + len(issues)) + ' issues')
             start += batch
             issues = issues_getter(start, batch)
-        print log_header + ' action applied to ' + str(len(processed_issue_ids_set)) + ' issues'
+        print(log_header + ' action applied to ' + str(len(processed_issue_ids_set)) + ' issues')
         return processed_issue_ids_set
 
     def _get_tagged_only_in_slave(self, start, batch):

@@ -20,7 +20,7 @@ class SafeCommandExecutor(object):
                     self.logger.logAction(issue_id, self.yt, 'added comment: \"' + comment[0:LOGGED_COMMENT_LENGTH] + '...\"', run_as)
                 else:
                     self.logger.logAction(issue_id, self.yt, 'applied command: \"' + command + '\"', run_as)
-            except Exception, e:
+            except Exception as e:
                 self.logger.logError(e, issue_id, self.yt, 'failed to apply command: \"' + command + '\"', run_as)
 
     def executeUserImport(self, user):
@@ -29,7 +29,7 @@ class SafeCommandExecutor(object):
                 if not self.debug_mode:
                     self.yt.importUsers([user])
                 self.logger.logAction('Import user', self.yt, 'imported user: \"' + str(user.login) + '\"')
-            except YouTrackException, e:
+            except YouTrackException as e:
                 self.logger.logError(e, 'Import user', self.yt, 'failed to import user: \"' + user.login + '\" - could not find in opposite youtrack')
 
     def createIssue(self, project_id, summary, description, issue_from_id):
@@ -41,7 +41,7 @@ class SafeCommandExecutor(object):
                 #fail if summary or description are too long or can't convert to unicode params
             self.logger.logAction(str(issue_from_id) + '->' + created_issue_id, self.yt, 'created')
             return None if self.debug_mode else created_issue_id
-        except Exception, e:
+        except Exception as e:
             self.logger.logError(e, str(issue_from_id) + '->?', self.yt, 'failed to create' )
             return None
 

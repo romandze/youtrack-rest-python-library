@@ -6,9 +6,7 @@ import re
 import sys
 import tempfile
 import time
-import urllib
-import urllib2
-import urllib2_file_mod
+import urllib.request, urllib.parse, urllib.error
 from xml.dom import Node
 from xml.dom import minidom
 from xml.sax.saxutils import escape, quoteattr
@@ -17,17 +15,6 @@ from datetime import datetime
 
 import youtrack
 
-
-def urlquote(s):
-    return urllib.quote(utf8encode(s), safe="")
-
-
-def utf8encode(source):
-    if isinstance(source, unicode):
-        source = source.encode('utf-8')
-    return source
-
-
 def relogin_on_401(f):
     @functools.wraps(f)
     def wrapped(self, *args, **kwargs):
@@ -35,7 +22,7 @@ def relogin_on_401(f):
         while attempts:
             try:
                 return f(self, *args, **kwargs)
-            except youtrack.YouTrackException, e:
+            except youtrack.YouTrackException as e:
                 if e.response.status not in (401, 403, 500, 504):
                     raise e
                 if e.response.status == 504:
@@ -76,7 +63,7 @@ class Connection(object):
             login = ''
         if password is None:
             password = ''
-        body = 'login=%s&password=%s' % (urlquote(login), urlquote(password))
+        body = 'login=%s&password=%s' % (urllib.parse.quote(login), urllib.parse.quote(password))
         response, content = self.http.request(
             uri=self.baseUrl + '/user/login',
             method='POST',
@@ -96,9 +83,9 @@ class Connection(object):
         _illegal_unichrs = [(0x00, 0x08), (0x0B, 0x0C), (0x0E, 0x1F),
                             (0x7F, 0x84), (0x86, 0x9F), (0xFDD0, 0xFDDF),
                             (0xFFFE, 0xFFFF)]
-        _illegal_ranges = ["%s-%s" % (unichr(low), unichr(high))
+        _illegal_ranges = ["%s-%s" % (chr(low), chr(high))
                            for (low, high) in _illegal_unichrs]
-        return re.compile(u'[%s]' % u''.join(_illegal_ranges))
+        return re.compile(b'[%s]' % ''.join(_illegal_ranges))
 
     @relogin_on_401
     def _req(self, method, url, body=None, ignoreStatus=None, content_type=None):
@@ -109,45 +96,36 @@ class Connection(object):
                 if content_type is None:
                     content_type = 'application/xml; charset=UTF-8'
 
-                if content_type.lower().find('/xml') != -1:
+                #if content_type.lower().find('/xml') != -1:
                     # Remove invalid xml/utf-8 data
-                    body = re.sub(
-                        self.__get_illegal_xml_chars_re(), '',
-                        body.decode('utf-8', 'ignore')).encode('utf-8')
-                else:
-                    # Remove invalid utf-8 data
-                    body = body.decode('utf-8', 'ignore').encode('utf-8')
+                #    body = re.sub(self.__get_illegal_xml_chars_re(), b'', body)
 
                 headers['Content-Type'] = content_type
-                headers['Content-Length'] = str(len(body))
+                headers['Content-Length'] = len(body)
         elif method == 'GET' and content_type is not None:
             headers = headers.copy()
             headers['Accept'] = content_type
 
         if url.startswith('http'):
             response, content = self.http.request(
-                url.encode('utf-8'),
+                url,
                 method,
                 headers=headers,
                 body=body)
         else:
             response, content = self.http.request(
-                (self.baseUrl + url).encode('utf-8'),
+                (self.baseUrl + url),
                 method,
                 headers=headers,
                 body=body)
 
-        if response.get('content-type', '').lower().find('/xml') != -1:
-            # Remove invalid xml/utf-8 data
-            content = re.sub(self.__get_illegal_xml_chars_re(), '',
-                             content.decode('utf-8', 'ignore')).encode('utf-8')
-        else:
-            # Remove invalid utf-8 data
-            content = content.decode('utf-8', 'ignore').encode('utf-8')
+        #if response.get('content-type', '').lower().find('/xml') != -1:
+        #    # Remove invalid xml/utf-8 data
+        #    content = re.sub(self.__get_illegal_xml_chars_re(), b'', content)
 
         # TODO: Why do we need this?
-        content = content.translate(None, '\0')
-        content = re.sub('system_user[%@][a-zA-Z0-9]+', 'guest', content)
+        #content = content.translate(None, '\0')
+        content = re.sub(b'system_user[%@][a-zA-Z0-9]+', b'guest', content)
 
         if response.status not in (200, 201) and \
                 (ignoreStatus != response.status):
@@ -163,13 +141,13 @@ class Connection(object):
                 try:
                     return minidom.parseString(content)
                 except Exception as e:
-                    print(str(e))
+                    print((str(e)))
                     return ""
             elif response["content-type"].find("/json") != -1 and content:
                 try:
                     return json.loads(content)
                 except Exception as e:
-                    print(str(e))
+                    print((str(e)))
                     return ""
 
         if method == 'PUT' and ('location' in response):
@@ -212,7 +190,7 @@ class Connection(object):
         if permittedGroup is not None:
             params['permittedGroup'] = permittedGroup
 
-        return self._req('PUT', '/issue', urllib.urlencode(params), content_type='application/x-www-form-urlencoded')
+        return self._req('PUT', '/issue', urllib.parse.urlencode(params), content_type='application/x-www-form-urlencoded')
 
     def deleteIssue(self, issue_id):
         return self._req('DELETE', '/issue/%s' % issue_id)
@@ -232,7 +210,7 @@ class Connection(object):
         return [youtrack.Attachment(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getAttachmentContent(self, url):
-        f = urllib2.urlopen(urllib2.Request(self.url + url, headers=self.headers))
+        f = urllib.request.urlopen(urllib.request.Request(self.url + url, headers=self.headers))
         return f
 
     def deleteAttachment(self, issue_id, attachment_id):
@@ -244,47 +222,47 @@ class Connection(object):
             contentLength = None
             if 'content-length' in content.headers.dict:
                 contentLength = int(content.headers.dict['content-length'])
-            print 'Importing attachment for issue ', issueId
+            print('Importing attachment for issue ', issueId)
             try:
-                print 'Name: ', utf8encode(a.name)
-            except Exception, e:
-                print e
+                print('Name: ', a.name)
+            except Exception as e:
+                print(e)
             try:
-                print 'Author: ', a.authorLogin
-            except Exception, e:
-                print e
+                print('Author: ', a.authorLogin)
+            except Exception as e:
+                print(e)
             return self.importAttachment(issueId, a.name, content, a.authorLogin,
                 contentLength=contentLength,
                 contentType=content.info().type,
                 created=a.created if hasattr(a, 'created') else None,
-                group=utf8encode(a.group) if hasattr(a, 'group') else '')
-        except urllib2.HTTPError, e:
-            print "Can't create attachment"
+                group=a.group if hasattr(a, 'group') else '')
+        except urllib.error.HTTPError as e:
+            print("Can't create attachment")
             try:
                 err_content = e.read()
                 issue_id = issueId
                 attach_name = a.name
                 attach_url = a.url
-                if isinstance(err_content, unicode):
+                if isinstance(err_content, str):
                     err_content = err_content.encode('utf-8')
-                if isinstance(issue_id, unicode):
+                if isinstance(issue_id, str):
                     issue_id = issue_id.encode('utf-8')
-                if isinstance(attach_name, unicode):
+                if isinstance(attach_name, str):
                     attach_name = attach_name.encode('utf-8')
-                if isinstance(attach_url, unicode):
+                if isinstance(attach_url, str):
                     attach_url = attach_url.encode('utf-8')
-                print "HTTP CODE: ", e.code
-                print "REASON: ", err_content
-                print "IssueId: ", issue_id
-                print "Attachment filename: ", attach_name
-                print "Attachment URL: ", attach_url
+                print("HTTP CODE: ", e.code)
+                print("REASON: ", err_content)
+                print("IssueId: ", issue_id)
+                print("Attachment filename: ", attach_name)
+                print("Attachment URL: ", attach_url)
             except Exception:
                 pass
-        except Exception, e:
+        except Exception as e:
             try:
-                print content.geturl()
-                print content.getcode()
-                print content.info()
+                print(content.geturl())
+                print(content.getcode())
+                print(content.info())
             except Exception:
                 pass
             raise e
@@ -321,13 +299,13 @@ class Connection(object):
             except youtrack.YouTrackException:
                 params['created'] = str(calendar.timegm(datetime.now().timetuple()) * 1000)
 
-        url = self.baseUrl + url_prefix + issueId + "/attachment?" + urllib.urlencode(params)
-        r = urllib2.Request(url,
+        url = self.baseUrl + url_prefix + issueId + "/attachment?" + urllib.parse.urlencode(params)
+        r = urllib.request.Request(url,
             headers=headers, data=post_data)
         #r.set_proxy('localhost:8888', 'http')
         try:
-            res = urllib2.urlopen(r)
-        except urllib2.HTTPError, e:
+            res = urllib.request.urlopen(r)
+        except urllib.error.HTTPError as e:
             if e.code == 201:
                 return e.msg + ' ' + name
             raise e
@@ -345,7 +323,7 @@ class Connection(object):
 
 
     def getLinks(self, id, outwardOnly=False):
-        response, content = self._req('GET', '/issue/' + urlquote(id) + '/link')
+        response, content = self._req('GET', '/issue/' + urllib.parse.quote(id) + '/link')
         xml = minidom.parseString(content)
         res = []
         for c in [e for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]:
@@ -359,7 +337,7 @@ class Connection(object):
         """
         if login.startswith('system_user'):
             login = 'guest'
-        return youtrack.User(self._get("/admin/user/" + urlquote(login.encode('utf8'))), self)
+        return youtrack.User(self._get("/admin/user/" + urllib.parse.quote(login.encode('utf8'))), self)
 
     def createUser(self, user):
         """ user from getUser
@@ -391,13 +369,13 @@ class Connection(object):
             xml += '  <user ' + "".join(k + '=' + quoteattr(u[k]) + ' ' for k in u if k in known_attrs) + '/>\n'
         xml += '</list>'
         #TODO: convert response xml into python objects
-        if isinstance(xml, unicode):
+        if isinstance(xml, str):
             xml = xml.encode('utf-8')
         return self._reqXml('PUT', '/import/users', xml, 400).toxml()
 
     def importIssuesXml(self, projectId, assigneeGroup, xml):
-        return self._reqXml('PUT', '/import/' + urlquote(projectId) + '/issues?' +
-                                   urllib.urlencode({'assigneeGroup': assigneeGroup}),
+        return self._reqXml('PUT', '/import/' + urllib.parse.quote(projectId) + '/issues?' +
+                                   urllib.parse.urlencode({'assigneeGroup': assigneeGroup}),
             xml, 400).toxml()
 
     def importLinks(self, links):
@@ -454,9 +432,9 @@ class Connection(object):
                 attrValue = issue[issueAttr]
                 if attrValue is None:
                     continue
-                if isinstance(attrValue, unicode):
+                if isinstance(attrValue, str):
                     attrValue = attrValue.encode('utf-8')
-                if isinstance(issueAttr, unicode):
+                if isinstance(issueAttr, str):
                     issueAttr = issueAttr.encode('utf-8')
                 if issueAttr == 'comments':
                     comments = attrValue
@@ -466,7 +444,7 @@ class Connection(object):
                         record += '    <field name="' + issueAttr + '">\n'
                         if isinstance(attrValue, list) or getattr(attrValue, '__iter__', False):
                             for v in attrValue:
-                                if isinstance(v, unicode):
+                                if isinstance(v, str):
                                     v = v.encode('utf-8')
                                 record += '      <value>' + escape(v.strip()) + '</value>\n'
                         else:
@@ -478,9 +456,9 @@ class Connection(object):
                     record += '    <comment'
                     for ca in comment:
                         val = comment[ca]
-                        if isinstance(ca, unicode):
+                        if isinstance(ca, str):
                             ca = ca.encode('utf-8')
-                        if isinstance(val, unicode):
+                        if isinstance(val, str):
                             val = val.encode('utf-8')
                         record += ' ' + ca + '=' + quoteattr(val, {"\n" : "&#xA;"})
                     record += '/>\n'
@@ -494,14 +472,14 @@ class Connection(object):
         #print xml
         #TODO: convert response xml into python objects
 
-        if isinstance(xml, unicode):
+        if isinstance(xml, str):
             xml = xml.encode('utf-8')
 
-        if isinstance(assigneeGroup, unicode):
+        if isinstance(assigneeGroup, str):
             assigneeGroup = assigneeGroup.encode('utf-8')
 
-        url = '/import/' + urlquote(projectId) + '/issues?' + urllib.urlencode({'assigneeGroup': assigneeGroup})
-        if isinstance(url, unicode):
+        url = '/import/' + urllib.parse.quote(projectId) + '/issues?' + urllib.parse.urlencode({'assigneeGroup': assigneeGroup})
+        if isinstance(url, str):
             url = url.encode('utf-8')
         result = self._reqXml('PUT', url, xml, 400)
         if (result == "") and (len(issues) > 1):
@@ -523,18 +501,18 @@ class Connection(object):
                 id = item.attributes["id"].value
                 imported = item.attributes["imported"].value.lower()
                 if imported == "true":
-                    print "Issue [ %s-%s ] imported successfully" % (projectId, id)
+                    print("Issue [ %s-%s ] imported successfully" % (projectId, id))
                 else:
                     sys.stderr.write("")
                     sys.stderr.write("Failed to import issue [ %s-%s ]." % (projectId, id))
                     sys.stderr.write("Reason : ")
                     sys.stderr.write(item.toxml())
                     sys.stderr.write("Request was :")
-                    if isinstance(issue_records[id], unicode):
+                    if isinstance(issue_records[id], str):
                         sys.stderr.write(issue_records[id].encode('utf-8'))
                     else:
                         sys.stderr.write(issue_records[id])
-                print ""
+                print("")
         return response
 
     def getProjects(self):
@@ -546,7 +524,7 @@ class Connection(object):
     def getProject(self, projectId):
         """ http://confluence.jetbrains.net/display/YTD2/GET+project
         """
-        return youtrack.Project(self._get("/admin/project/" + urlquote(projectId)), self)
+        return youtrack.Project(self._get("/admin/project/" + urllib.parse.quote(projectId)), self)
 
     def getProjectIds(self):
         response, content = self._req('GET', '/admin/project/')
@@ -554,12 +532,12 @@ class Connection(object):
         return [e.getAttribute('id') for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getProjectAssigneeGroups(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urlquote(projectId) + '/assignee/group')
+        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/assignee/group')
         xml = minidom.parseString(content)
         return [youtrack.Group(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getGroup(self, name):
-        return youtrack.Group(self._get("/admin/group/" + urlquote(name.encode('utf-8'))), self)
+        return youtrack.Group(self._get("/admin/group/" + urllib.parse.quote(name.encode('utf-8'))), self)
 
     def getGroups(self):
         response, content = self._req('GET', '/admin/group')
@@ -567,37 +545,37 @@ class Connection(object):
         return [youtrack.Group(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def deleteGroup(self, name):
-        return self._req('DELETE', "/admin/group/" + urlquote(name.encode('utf-8')))
+        return self._req('DELETE', "/admin/group/" + urllib.parse.quote(name.encode('utf-8')))
 
     def getUserGroups(self, userName):
-        response, content = self._req('GET', '/admin/user/%s/group' % urlquote(userName.encode('utf-8')))
+        response, content = self._req('GET', '/admin/user/%s/group' % urllib.parse.quote(userName.encode('utf-8')))
         xml = minidom.parseString(content)
         return [youtrack.Group(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def setUserGroup(self, user_name, group_name):
-        if isinstance(user_name, unicode):
+        if isinstance(user_name, str):
             user_name = user_name.encode('utf-8')
-        if isinstance(group_name, unicode):
+        if isinstance(group_name, str):
             group_name = group_name.encode('utf-8')
         response, content = self._req('POST',
-            '/admin/user/%s/group/%s' % (urlquote(user_name), urlquote(group_name)),
+            '/admin/user/%s/group/%s' % (urllib.parse.quote(user_name), urllib.parse.quote(group_name)),
             body='')
         return response
 
     def createGroup(self, group):
         content = self._put(
-            '/admin/group/%s?autoJoin=false' % urlquote(group.name))
+            '/admin/group/%s?autoJoin=false' % urllib.parse.quote(group.name))
         return content
 
     def addUserRoleToGroup(self, group, userRole):
-        url_group_name = urlquote(utf8encode(group.name))
-        url_role_name = urlquote(utf8encode(userRole.name))
+        url_group_name = urllib.parse.quote(utf8encode(group.name))
+        url_role_name = urllib.parse.quote(utf8encode(userRole.name))
         response, content = self._req('PUT', '/admin/group/%s/role/%s' % (url_group_name, url_role_name),
             body=userRole.toXml())
         return content
 
     def getRole(self, name):
-        return youtrack.Role(self._get("/admin/role/" + urlquote(name)), self)
+        return youtrack.Role(self._get("/admin/role/" + urllib.parse.quote(name)), self)
 
     def getRoles(self):
         response, content = self._req('GET', '/admin/role')
@@ -605,34 +583,34 @@ class Connection(object):
         return [youtrack.Role(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getGroupRoles(self, group_name):
-        response, content = self._req('GET', '/admin/group/%s/role' % urlquote(group_name))
+        response, content = self._req('GET', '/admin/group/%s/role' % urllib.parse.quote(group_name))
         xml = minidom.parseString(content)
         return [youtrack.UserRole(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def createRole(self, role):
-        url_role_name = urlquote(utf8encode(role.name))
+        url_role_name = urllib.parse.quote(role.name)
         url_role_dscr = ''
         if hasattr(role, 'description'):
-                url_role_dscr = urlquote(utf8encode(role.description))
+                url_role_dscr = urllib.parse.quote(role.description)
         content = self._put('/admin/role/%s?description=%s' % (url_role_name, url_role_dscr))
         return content
 
     def changeRole(self, role, new_name, new_description):
-        url_role_name = urlquote(utf8encode(role.name))
-        url_new_name = urlquote(utf8encode(new_name))
-        url_new_dscr = urlquote(utf8encode(new_description))
+        url_role_name = urllib.parse.quote(role.name)
+        url_new_name = urllib.parse.quote(new_name)
+        url_new_dscr = urllib.parse.quote(new_description)
         content = self._req('POST',
             '/admin/role/%s?newName=%s&description=%s' % (url_role_name, url_new_name, url_new_dscr))
         return content
 
     def addPermissionToRole(self, role, permission):
-        url_role_name = urlquote(role.name)
-        url_prm_name = urlquote(permission.name)
+        url_role_name = urllib.parse.quote(role.name)
+        url_prm_name = urllib.parse.quote(permission.name)
         content = self._req('POST', '/admin/role/%s/permission/%s' % (url_role_name, url_prm_name))
         return content
 
     def getRolePermissions(self, role):
-        response, content = self._req('GET', '/admin/role/%s/permission' % urlquote(role.name))
+        response, content = self._req('GET', '/admin/role/%s/permission' % urllib.parse.quote(role.name))
         xml = minidom.parseString(content)
         return [youtrack.Permission(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
@@ -642,7 +620,7 @@ class Connection(object):
         return [youtrack.Permission(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getSubsystem(self, projectId, name):
-        response, content = self._req('GET', '/admin/project/' + projectId + '/subsystem/' + urlquote(name))
+        response, content = self._req('GET', '/admin/project/' + projectId + '/subsystem/' + urllib.parse.quote(name))
         xml = minidom.parseString(content)
         return youtrack.Subsystem(xml, self)
 
@@ -652,17 +630,17 @@ class Connection(object):
         return [youtrack.Subsystem(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getVersions(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urlquote(projectId) + '/version?showReleased=true')
+        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/version?showReleased=true')
         xml = minidom.parseString(content)
         return [self.getVersion(projectId, v.getAttribute('name')) for v in
                 xml.documentElement.getElementsByTagName('version')]
 
     def getVersion(self, projectId, name):
         return youtrack.Version(
-            self._get("/admin/project/" + urlquote(projectId) + "/version/" + urlquote(name)), self)
+            self._get("/admin/project/" + urllib.parse.quote(projectId) + "/version/" + urllib.parse.quote(name)), self)
 
     def getBuilds(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urlquote(projectId) + '/build')
+        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/build')
         xml = minidom.parseString(content)
         return [youtrack.Build(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
@@ -671,7 +649,7 @@ class Connection(object):
         first = True
         users = []
         position = 0
-        user_search_params = urllib.urlencode(params)
+        user_search_params = urllib.parse.urlencode(params)
         while True:
             response, content = self._req('GET', "/admin/user/?start=%s&%s" % (str(position), user_search_params))
             position += 10
@@ -690,7 +668,7 @@ class Connection(object):
         return users
 
     def deleteUser(self, login):
-        return self._req('DELETE', "/admin/user/" + urlquote(login.encode('utf-8')))
+        return self._req('DELETE', "/admin/user/" + urllib.parse.quote(login.encode('utf-8')))
 
     # TODO this function is deprecated
     def createBuild(self):
@@ -704,18 +682,18 @@ class Connection(object):
         return self.createProjectDetailed(project.id, project.name, project.description, project.lead)
 
     def deleteProject(self, projectId):
-        return self._req('DELETE', "/admin/project/" + urlquote(projectId))
+        return self._req('DELETE', "/admin/project/" + urllib.parse.quote(projectId))
 
     def createProjectDetailed(self, projectId, name, description, projectLeadLogin, startingNumber=1):
         _name = name
         _desc = description
-        if isinstance(_name, unicode):
+        if isinstance(_name, str):
             _name = _name.encode('utf-8')
-        if isinstance(_desc, unicode):
+        if isinstance(_desc, str):
             _desc = _desc.encode('utf-8')
         _name = _name.replace('/', ' ')
         return self._put('/admin/project/' + projectId + '?' +
-                         urllib.urlencode({'projectName': _name,
+                         urllib.parse.urlencode({'projectName': _name,
                                            'description': _desc + ' ',
                                            'projectLeadLogin': projectLeadLogin,
                                            'lead': projectLeadLogin,
@@ -736,15 +714,15 @@ class Connection(object):
 
     # TODO this function is deprecated
     def createSubsystemDetailed(self, projectId, name, isDefault, defaultAssigneeLogin):
-        self._put('/admin/project/' + projectId + '/subsystem/' + urlquote(name.encode('utf-8')) + "?" +
-                  urllib.urlencode({'isDefault': str(isDefault),
+        self._put('/admin/project/' + projectId + '/subsystem/' + urllib.parse.quote(name.encode('utf-8')) + "?" +
+                  urllib.parse.urlencode({'isDefault': str(isDefault),
                                     'defaultAssignee': defaultAssigneeLogin}))
 
         return 'Created'
 
     # TODO this function is deprecated
     def deleteSubsystem(self, projectId, name):
-        return self._reqXml('DELETE', '/admin/project/' + projectId + '/subsystem/' + urlquote(name.encode('utf-8'))
+        return self._reqXml('DELETE', '/admin/project/' + projectId + '/subsystem/' + urllib.parse.quote(name.encode('utf-8'))
             , '')
 
     # TODO this function is deprecated
@@ -768,16 +746,16 @@ class Connection(object):
         if releaseDate is not None:
             params['releaseDate'] = str(releaseDate)
         return self._put(
-            '/admin/project/' + urlquote(projectId) + '/version/' + urlquote(name.encode('utf-8')) + "?" +
-            urllib.urlencode(params))
+            '/admin/project/' + urllib.parse.quote(projectId) + '/version/' + urllib.parse.quote(name.encode('utf-8')) + "?" +
+            urllib.parse.urlencode(params))
 
     def getIssues(self, projectId, filter, after, max):
-        #response, content = self._req('GET', '/project/issues/' + urlquote(projectId) + "?" +
+        #response, content = self._req('GET', '/project/issues/' + urllib.parse.quote(projectId) + "?" +
         path = '/issue'
         if projectId:
-            path += '/byproject/' + urlquote(projectId)
+            path += '/byproject/' + urllib.parse.quote(projectId)
         response, content = self._req('GET', path + "?" +
-                                             urllib.urlencode({'after': str(after),
+                                             urllib.parse.urlencode({'after': str(after),
                                                                'max': str(max),
                                                                'filter': filter}))
         xml = minidom.parseString(content)
@@ -786,7 +764,7 @@ class Connection(object):
     def getNumberOfIssues(self, filter = '', waitForServer=True):
         while True:
           urlFilterList = [('filter',filter)]
-          finalUrl = '/issue/count?' + urllib.urlencode(urlFilterList)
+          finalUrl = '/issue/count?' + urllib.parse.urlencode(urlFilterList)
           response, content = self._req('GET', finalUrl, content_type="application/json")
           result = json.loads(content)
           numberOfIssues = result['value']
@@ -810,7 +788,7 @@ class Connection(object):
                     ('max',str(max)),
                     ('filter',filter)]
         response, content = self._req('GET', '/issue' + "?" +
-                                             urllib.urlencode(urlJobby))
+                                             urllib.parse.urlencode(urlJobby))
         xml = minidom.parseString(content)
         return [youtrack.Issue(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
@@ -820,7 +798,7 @@ class Connection(object):
         return [youtrack.Link(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def executeCommand(self, issueId, command, comment=None, group=None, run_as=None, disable_notifications=False):
-        if isinstance(command, unicode):
+        if isinstance(command, str):
             command = command.encode('utf-8')
         params = {'command': command}
 
@@ -837,18 +815,18 @@ class Connection(object):
             params['disableNotifications'] = disable_notifications
 
         for p in params:
-            if isinstance(params[p], unicode):
+            if isinstance(params[p], str):
                 params[p] = params[p].encode('utf-8')
 
         self._req('POST',
                   '/issue/' + issueId + "/execute",
-                  body=urllib.urlencode(params),
+                  body=urllib.parse.urlencode(params),
                   content_type='application/x-www-form-urlencoded')
 
         return "Command executed"
 
     def getCustomField(self, name):
-        return youtrack.CustomField(self._get("/admin/customfield/field/" + urlquote(name.encode('utf-8'))), self)
+        return youtrack.CustomField(self._get("/admin/customfield/field/" + urllib.parse.quote(name.encode('utf-8'))), self)
 
     def getCustomFields(self):
         response, content = self._req('GET', '/admin/customfield/field')
@@ -874,11 +852,11 @@ class Connection(object):
                   'autoAttached': str(auto_attached)}
         params.update(additional_params)
         for key in params:
-            if isinstance(params[key], unicode):
+            if isinstance(params[key], str):
                 params[key] = params[key].encode('utf-8')
 
-        self._put('/admin/customfield/field/' + urlquote(customFieldName.encode('utf-8')) + '?' +
-                  urllib.urlencode(params), )
+        self._put('/admin/customfield/field/' + urllib.parse.quote(customFieldName.encode('utf-8')) + '?' +
+                  urllib.parse.urlencode(params), )
 
         return "Created"
 
@@ -887,14 +865,14 @@ class Connection(object):
             self.createCustomField(cf)
 
     def getProjectCustomField(self, projectId, name):
-        if isinstance(name, unicode):
+        if isinstance(name, str):
             name = name.encode('utf8')
         return youtrack.ProjectCustomField(
-            self._get("/admin/project/" + urlquote(projectId) + "/customfield/" + urlquote(name))
+            self._get("/admin/project/" + urllib.parse.quote(projectId) + "/customfield/" + urllib.parse.quote(name))
             , self)
 
     def getProjectCustomFields(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urlquote(projectId) + '/customfield')
+        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/customfield')
         xml = minidom.parseString(content)
         return [self.getProjectCustomField(projectId, e.getAttribute('name')) for e in
                 xml.getElementsByTagName('projectCustomField')]
@@ -904,21 +882,21 @@ class Connection(object):
 
     def createProjectCustomFieldDetailed(self, projectId, customFieldName, emptyFieldText, params=None):
         if not len(emptyFieldText.strip()):
-            emptyFieldText = u"No " + customFieldName
-        if isinstance(customFieldName, unicode):
+            emptyFieldText = "No " + customFieldName
+        if isinstance(customFieldName, str):
             customFieldName = customFieldName.encode('utf-8')
         _params = {'emptyFieldText': emptyFieldText}
         if params is not None:
             _params.update(params)
         for key in _params:
-            if isinstance(_params[key], unicode):
+            if isinstance(_params[key], str):
                 _params[key] = _params[key].encode('utf-8')
         return self._put(
-            '/admin/project/' + projectId + '/customfield/' + urlquote(customFieldName) + '?' +
-            urllib.urlencode(_params))
+            '/admin/project/' + projectId + '/customfield/' + urllib.parse.quote(customFieldName) + '?' +
+            urllib.parse.urlencode(_params))
 
     def deleteProjectCustomField(self, project_id, pcf_name):
-        self._req('DELETE', '/admin/project/' + urlquote(project_id) + "/customfield/" + urlquote(pcf_name))
+        self._req('DELETE', '/admin/project/' + urllib.parse.quote(project_id) + "/customfield/" + urllib.parse.quote(pcf_name))
 
     def getIssueLinkTypes(self):
         response, content = self._req('GET', '/admin/issueLinkType')
@@ -933,29 +911,29 @@ class Connection(object):
         return self.createIssueLinkTypeDetailed(ilt.name, ilt.outwardName, ilt.inwardName, ilt.directed)
 
     def createIssueLinkTypeDetailed(self, name, outwardName, inwardName, directed):
-        if isinstance(name, unicode):
+        if isinstance(name, str):
             name = name.encode('utf-8')
-        if isinstance(outwardName, unicode):
+        if isinstance(outwardName, str):
             outwardName = outwardName.encode('utf-8')
-        if isinstance(inwardName, unicode):
+        if isinstance(inwardName, str):
             inwardName = inwardName.encode('utf-8')
-        return self._put('/admin/issueLinkType/' + urlquote(name) + '?' +
-                         urllib.urlencode({'outwardName': outwardName,
+        return self._put('/admin/issueLinkType/' + urllib.parse.quote(name) + '?' +
+                         urllib.parse.urlencode({'outwardName': outwardName,
                                            'inwardName': inwardName,
                                            'directed': directed}))
 
     def getEvents(self, issue_id):
-        return self._get('/event/issueEvents/' + urlquote(issue_id))
+        return self._get('/event/issueEvents/' + urllib.parse.quote(issue_id))
 
     def getWorkItems(self, issue_id):
         try:
             response, content = self._req('GET',
-                '/issue/%s/timetracking/workitem' % urlquote(issue_id), content_type="application/xml")
+                '/issue/%s/timetracking/workitem' % urllib.parse.quote(issue_id), content_type="application/xml")
             xml = minidom.parseString(content)
             return [youtrack.WorkItem(e, self) for e in xml.documentElement.childNodes if
                     e.nodeType == Node.ELEMENT_NODE]
-        except youtrack.YouTrackException, e:
-            print "Can't get work items.", str(e)
+        except youtrack.YouTrackException as e:
+            print("Can't get work items.", str(e))
             return []
 
 
@@ -968,10 +946,10 @@ class Connection(object):
         if hasattr(work_item, 'worktype') and work_item.worktype is not None:
             xml += '<worktype><name>%s</name></worktype>' % work_item.worktype
         xml += '</workItem>'
-        if isinstance(xml, unicode):
+        if isinstance(xml, str):
             xml = xml.encode('utf-8')
         self._reqXml('POST',
-            '/issue/%s/timetracking/workitem' % urlquote(issue_id), xml)
+            '/issue/%s/timetracking/workitem' % urllib.parse.quote(issue_id), xml)
 
     def importWorkItems(self, issue_id, work_items):
         xml = ''
@@ -985,7 +963,7 @@ class Connection(object):
                 xml += '<worktype><name>%s</name></worktype>' % work_item.worktype
             xml += '<author login=%s></author>' % quoteattr(work_item.authorLogin)
             xml += '</workItem>'
-        if isinstance(xml, unicode):
+        if isinstance(xml, str):
             xml = xml.encode('utf-8')
         if xml:
             xml = '<workItems>' + xml + '</workItems>'
@@ -993,7 +971,7 @@ class Connection(object):
                 self.headers['Accept'] = 'application/xml'
                 self._reqXml(
                     'PUT',
-                    '/import/issue/%s/workitems' % urlquote(issue_id), xml)
+                    '/import/issue/%s/workitems' % urllib.parse.quote(issue_id), xml)
             finally:
                 del self.headers['Accept']
 
@@ -1007,7 +985,7 @@ class Connection(object):
         if options_limit is not None:
             opts['optionsLimit'] = options_limit
         return youtrack.IntelliSense(
-            self._get('/issue/intellisense?' + urllib.urlencode(opts)), self)
+            self._get('/issue/intellisense?' + urllib.parse.urlencode(opts)), self)
 
     def getCommandIntelliSense(self, issue_id, command,
                                run_as=None, caret=None, options_limit=None):
@@ -1020,13 +998,13 @@ class Connection(object):
             opts['optionsLimit'] = options_limit
         return youtrack.IntelliSense(
             self._get('/issue/%s/execute/intellisense?%s'
-                      % (issue_id, urllib.urlencode(opts))), self)
+                      % (issue_id, urllib.parse.urlencode(opts))), self)
 
     def getGlobalTimeTrackingSettings(self):
         try:
             cont = self._get('/admin/timetracking')
             return youtrack.GlobalTimeTrackingSettings(cont, self)
-        except youtrack.YouTrackException, e:
+        except youtrack.YouTrackException as e:
             if e.response.status != 404:
                 raise e
 
@@ -1034,7 +1012,7 @@ class Connection(object):
         try:
             cont = self._get('/admin/project/' + projectId + '/timetracking')
             return youtrack.ProjectTimeTrackingSettings(cont, self)
-        except youtrack.YouTrackException, e:
+        except youtrack.YouTrackException as e:
             if e.response.status != 404:
                 raise e
 
@@ -1054,11 +1032,11 @@ class Connection(object):
         else:
             xml = '<settings>'
         if estimateField is not None and estimateField != '':
-            if isinstance(estimateField, unicode):
+            if isinstance(estimateField, str):
                 estimateField = estimateField.encode('utf-8')
             xml += '<estimation name="%s"/>' % estimateField
         if timeSpentField is not None and timeSpentField != '':
-            if isinstance(timeSpentField, unicode):
+            if isinstance(timeSpentField, str):
                 timeSpentField = timeSpentField.encode('utf-8')
             xml += '<spentTime name="%s"/>' % timeSpentField
         xml += '</settings>'
@@ -1076,7 +1054,7 @@ class Connection(object):
                     for e in xml.documentElement.childNodes
                     if e.nodeType == Node.ELEMENT_NODE]
         except youtrack.YouTrackException as e:
-            print("Can't get work types", str(e))
+            print(("Can't get work types", str(e)))
             return []
 
     def create_work_type(self, name=None, auto_attached=None, work_type=None):
@@ -1102,11 +1080,11 @@ class Connection(object):
             if e.response.status not in (400, 409):
                 raise e
             if work_type:
-                name_lc = utf8encode(work_type.name.lower())
+                name_lc = work_type.name.lower()
             else:
-                name_lc = utf8encode(name.lower())
+                name_lc = name.lower()
             for wt in self.get_work_types():
-                if utf8encode(wt.name.lower()) == name_lc:
+                if wt.name.lower() == name_lc:
                     return wt
             raise e
 
@@ -1142,7 +1120,7 @@ class Connection(object):
     def getBundle(self, field_type, name):
         field_type = self.get_field_type(field_type)
         response = self._get('/admin/customfield/%s/%s' % (self.bundle_paths[field_type],
-                                                           urlquote(name.encode('utf-8'))))
+                                                           urllib.parse.quote(name.encode('utf-8'))))
         return self.bundle_types[field_type](response, self)
 
     def renameBundle(self, bundle, new_name):
@@ -1163,39 +1141,39 @@ class Connection(object):
         request = ""
         if bundle.get_field_type() != "user":
             request = "/admin/customfield/%s/%s/" % (
-                self.bundle_paths[bundle.get_field_type()], urlquote(bundle.name.encode('utf-8')))
+                self.bundle_paths[bundle.get_field_type()], urllib.parse.quote(bundle.name.encode('utf-8')))
             if isinstance(value, str):
-                request += urlquote(value)
-            elif isinstance(value, unicode):
-                request += urlquote(value.encode('utf-8'))
+                request += urllib.parse.quote(value)
+            elif isinstance(value, str):
+                request += urllib.parse.quote(value.encode('utf-8'))
             else:
-                request += urlquote(value.name.encode('utf-8')) + "?"
+                request += urllib.parse.quote(value.name.encode('utf-8')) + "?"
                 params = dict()
                 for e in value:
                     if (e != "name") and (e != "element_name") and len(value[e]):
-                        if isinstance(value[e], unicode):
+                        if isinstance(value[e], str):
                             params[e] = value[e].encode('utf-8')
                         else:
                             params[e] = value[e]
                 if len(params):
-                    request += urllib.urlencode(params)
+                    request += urllib.parse.urlencode(params)
         else:
-            request = "/admin/customfield/userBundle/%s/" % urlquote(bundle.name.encode('utf-8'))
+            request = "/admin/customfield/userBundle/%s/" % urllib.parse.quote(bundle.name.encode('utf-8'))
             if isinstance(value, youtrack.User):
                 request += "individual/%s/" % value.login
             elif isinstance(value, youtrack.Group):
-                request += "group/%s/" % urlquote(value.name.encode('utf-8'))
+                request += "group/%s/" % urllib.parse.quote(value.name.encode('utf-8'))
             else:
-                request += "individual/%s/" % urlquote(value)
+                request += "individual/%s/" % urllib.parse.quote(value)
         return self._put(request)
 
     def removeValueFromBundle(self, bundle, value):
         field_type = bundle.get_field_type()
         request = "/admin/customfield/%s/%s/" % (self.bundle_paths[field_type], bundle.name)
         if field_type != "user":
-            request += urlquote(value.name)
+            request += urllib.parse.quote(value.name)
         elif isinstance(value, youtrack.User):
-            request += "individual/" + urlquote(value.login)
+            request += "individual/" + urllib.parse.quote(value.login)
         else:
             request += "group/" + value.name
         response, content = self._req("DELETE", request, "", ignoreStatus=204)
@@ -1203,7 +1181,7 @@ class Connection(object):
 
 
     def getEnumBundle(self, name):
-        return youtrack.EnumBundle(self._get("/admin/customfield/bundle/" + urlquote(name)), self)
+        return youtrack.EnumBundle(self._get("/admin/customfield/bundle/" + urllib.parse.quote(name)), self)
 
 
     def createEnumBundle(self, eb):

@@ -2,7 +2,7 @@ from youtrack import YouTrackException
 
 
 def utf8encode(source):
-    if isinstance(source, unicode):
+    if isinstance(source, str):
         source = source.encode('utf-8')
     return source
 
@@ -144,10 +144,10 @@ def add_values_to_bundle_safe(connection, bundle, values):
     for value in values:
         try:
             connection.addValueToBundle(bundle, value)
-        except YouTrackException, e:
+        except YouTrackException as e:
             if e.response.status == 409:
-                print "Value with name [ %s ] already exists in bundle [ %s ]" % \
-                      (utf8encode(value.name), utf8encode(bundle.name))
+                print("Value with name [ %s ] already exists in bundle [ %s ]" % \
+                      (utf8encode(value.name), utf8encode(bundle.name)))
             else:
                 raise e
 
@@ -157,9 +157,9 @@ def create_bundle_safe(connection, bundle_name, bundle_type):
     bundle.name = bundle_name
     try:
         connection.createBundle(bundle)
-    except YouTrackException, e:
+    except YouTrackException as e:
         if e.response.status == 409:
-            print "Bundle with name [ %s ] already exists" % bundle_name
+            print("Bundle with name [ %s ] already exists" % bundle_name)
         else:
             raise e
     return connection.getBundle(bundle_type, bundle_name)
