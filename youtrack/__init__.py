@@ -113,11 +113,7 @@ class YouTrackObject(object):
         for k, v in list(self.__dict__.items()):
             if k in ('youtrack', '_attribute_types'):
                 continue
-            if isinstance(k, str):
-                k = k.encode('utf-8')
-            if isinstance(v, str):
-                v = v.encode('utf-8')
-            _repr += k + ' = ' + str(v) + '\n'
+            _repr += '{0}={1}\n'.format(k,v)
         return _repr
 
     def __iter__(self):
