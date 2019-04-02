@@ -119,11 +119,11 @@ class YouTrackObject(object):
     def to_dict(self):
         data = self.__dict__
         try:
-            data.pop('youtrack')
+            del data['youtrack']
         except KeyError as e:
             print('Failed to remove key. {0}'.format(e))
         try:
-            data.pop('_attribute_types')
+            del data['_attribute_types']
         except KeyError as e:
             print('Failed to remove key. {0}'.format(e))
         return data
