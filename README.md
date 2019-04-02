@@ -2,6 +2,14 @@
 
 Fork of the official [JetBrains Python YouTrack API library](https://github.com/JetBrains/youtrack-rest-python-library)
 
+# Features modified
+
+* Ported to python3
+* Added `to_dict` method on YouTrack objects
+
+
+
+
 # YouTrack REST API Client Library for Python
 This is a Python client library that you can use to access the REST API for JetBrains YouTrack. Previously, this repository also included command-line tools for importing issues from other issue trackers. We have created a [separate repository](https://github.com/JetBrains/youtrack-python-scripts) to store scripts that use this library.
 
