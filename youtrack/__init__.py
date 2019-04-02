@@ -7,7 +7,7 @@ from xml.dom import Node
 from xml.dom.minidom import Document
 from xml.dom import minidom
 from xml.sax.saxutils import escape, quoteattr
-
+import datetime
 
 EXISTING_FIELD_TYPES = {
     'numberInProject'   :   'integer',
@@ -116,6 +116,12 @@ class YouTrackObject(object):
             _repr += '{0}={1}\n'.format(k,v)
         return _repr
 
+    def to_dict(self):
+        data = self.__dict__
+        data.pop('youtrack')
+        data.pop('_attribute_types')
+        return data
+
     def __iter__(self):
         for item in self.__dict__:
             if item == '_attribute_types':
@@ -201,7 +207,7 @@ class Issue(YouTrackObject):
         return voters
 
     def getComments(self):
-        #TODO: do not make rest request if issue was initied with comments
+        #TODO: do not make rest request if issue was initiated with comments
         if not hasattr(self, 'comments'):
             setattr(self, 'comments', self.youtrack.getComments(self.id))
         return self.comments
@@ -261,7 +267,9 @@ class IssueChange(YouTrackObject):
         for field in xml.getElementsByTagName('field'):
             name = field.getAttribute('name')
             if name == 'updated':
-                self.updated = int(self._text(field.getElementsByTagName('value')[0]))
+                #self.updated = int(self._text(field.getElementsByTagName('value')[0]))
+                #Parse to datetime
+                self.updated = datetime.utcfromtimestamp(self._text(field.getElementsByTagName('value')[0]))
             elif name == 'updaterName':
                 self.updater_name = self._text(field.getElementsByTagName('value')[0])
             elif name == 'links':

@@ -10,9 +10,7 @@ import urllib.request, urllib.parse, urllib.error
 from xml.dom import Node
 from xml.dom import minidom
 from xml.sax.saxutils import escape, quoteattr
-
-from datetime import datetime
-
+import datetime
 import youtrack
 
 def relogin_on_401(f):
@@ -568,8 +566,8 @@ class Connection(object):
         return content
 
     def addUserRoleToGroup(self, group, userRole):
-        url_group_name = urllib.parse.quote(utf8encode(group.name))
-        url_role_name = urllib.parse.quote(utf8encode(userRole.name))
+        url_group_name = urllib.parse.quote(group.name)
+        url_role_name = urllib.parse.quote(userRole.name)
         response, content = self._req('PUT', '/admin/group/%s/role/%s' % (url_group_name, url_role_name),
             body=userRole.toXml())
         return content
