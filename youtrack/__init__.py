@@ -9,6 +9,8 @@ from xml.dom import minidom
 from xml.sax.saxutils import escape, quoteattr
 import datetime
 
+name='youtrack'
+
 EXISTING_FIELD_TYPES = {
     'numberInProject'   :   'integer',
     'summary'           :   'string',
@@ -121,11 +123,13 @@ class YouTrackObject(object):
         try:
             del data['youtrack']
         except KeyError as e:
-            print('Failed to remove key. {0}'.format(e))
+            pass
+            #print('Failed to remove key. {0}'.format(e))
         try:
             del data['_attribute_types']
         except KeyError as e:
-            print('Failed to remove key. {0}'.format(e))
+            pass
+            #print('Failed to remove key. {0}'.format(e))
         return data
 
     def __iter__(self):
