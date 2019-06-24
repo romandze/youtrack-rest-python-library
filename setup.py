@@ -9,14 +9,14 @@ with open(path.join(here, 'README.md')) as f:
 
 setup(
     name='youtrack',
-    version='0.1.0',
+    version='0.2.0',
     python_requires='>3',
     packages=['youtrack', 'youtrack.sync'],
-    url='https://github.com/8032/youtrack-rest-python-library',
+    url='https://github.com/JetBrains/youtrack-rest-python-library',
     license='Apache 2.0',
     maintainer='Greg',
     maintainer_email='23417426+8032@users.noreply.github.com',
-    description='Python library for interacting with YouTrack via REST API, ported from JetBrains python2 to python3',
+    description='Python library for interacting with YouTrack via REST API supporting python3',
     long_description=long_description,
     long_description_content_type="text/markdown",
     install_requires=[

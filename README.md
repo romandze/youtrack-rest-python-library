@@ -1,6 +1,4 @@
-# Python3 Compatible
-
-Fork of the official [JetBrains Python YouTrack API library](https://github.com/JetBrains/youtrack-rest-python-library)
+[![official JetBrains project](http://jb.gg/badges/official-flat-square.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 
 # Features modified
 
