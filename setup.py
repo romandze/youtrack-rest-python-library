@@ -3,39 +3,30 @@ from setuptools import setup
 
 here = path.abspath(path.dirname(__file__))
 
-# Try to convert markdown readme file to rst format
-try:
-    import pypandoc
-    md_file = path.join(here, 'README.md')
-    rst_file = path.join(here, 'README.rst')
-    pypandoc.convert_file(source_file=md_file, outputfile=rst_file, to='rst')
-except (ImportError, OSError, IOError, RuntimeError):
-    pass
-
 # Get the long description from the relevant file
-with open(path.join(here, 'README.rst')) as f:
+with open(path.join(here, 'README.md')) as f:
     long_description = f.read()
-
-# Get version from file
-with open(path.join(here, 'version')) as f:
-    version = f.read().strip()
-
 
 setup(
     name='youtrack',
-    version=version,
-    python_requires='>=2.6, <3',
+    version='0.2.0',
+    python_requires='>3',
     packages=['youtrack', 'youtrack.sync'],
     url='https://github.com/JetBrains/youtrack-rest-python-library',
     license='Apache 2.0',
-    maintainer='Alexander Buturlinov',
-    maintainer_email='imboot85@gmail.com',
-    description='Python library for interacting with YouTrack via REST API',
+    maintainer='Greg',
+    maintainer_email='23417426+8032@users.noreply.github.com',
+    description='Python library for interacting with YouTrack via REST API supporting python3',
     long_description=long_description,
+    long_description_content_type="text/markdown",
     install_requires=[
-        "httplib2 >= 0.7.4",
-        # Cannot use original module because at the time it was modified in youtrack repo.
-        # "urllib2_file",
-        "six"
-    ]
+        'httplib2 >= 0.7.4',
+        'six'
+    ],
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: OS Independent",
+        "INTENDED AUDIENCE :: DEVELOPERS",
+    ],
 )

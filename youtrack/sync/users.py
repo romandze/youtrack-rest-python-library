@@ -3,7 +3,7 @@ import youtrack
 PROHIBITED = '/'
 
 def utf8encode(source):
-    if isinstance(source, unicode):
+    if isinstance(source, str):
         source = source.encode('utf-8')
     return source
 
@@ -51,10 +51,10 @@ class UserImporter(object):
             if group.name not in self.created_group_names:
                 try:
                     self.createGroup(group)
-                except Exception, ex:
-                    print utf8encode(repr(ex))
+                except Exception as ex:
+                    print(utf8encode(repr(ex)))
                     continue
-            print "Set " + utf8encode(yt_user.login) + " to " + utf8encode(group.name)
+            print("Set " + utf8encode(yt_user.login) + " to " + utf8encode(group.name))
             self.target.setUserGroup(yt_user.login, group.name)
 
     def _import_user_batch_recursively(self, users):
@@ -83,8 +83,8 @@ class UserImporter(object):
             if group.name not in self.created_group_names:
                 try:
                     self.createGroup(group)
-                except Exception, ex:
-                    print utf8encode(repr(ex))
+                except Exception as ex:
+                    print(utf8encode(repr(ex)))
 
     def createGroup(self, group):
         group_roles = self.source.getGroupRoles(group.name)
@@ -114,5 +114,5 @@ class UserImporter(object):
 
     def _check_login(self, login):
         failed = 1 in [c in login for c in PROHIBITED]
-        if failed: print "Could not import user [" + login + "], login contains prohibited chars: " + PROHIBITED
+        if failed: print("Could not import user [" + login + "], login contains prohibited chars: " + PROHIBITED)
         return not failed

@@ -7,7 +7,9 @@ from xml.dom import Node
 from xml.dom.minidom import Document
 from xml.dom import minidom
 from xml.sax.saxutils import escape, quoteattr
+import datetime
 
+name='youtrack'
 
 EXISTING_FIELD_TYPES = {
     'numberInProject'   :   'integer',
@@ -24,7 +26,7 @@ EXISTING_FIELD_TYPES = {
 
 }
 
-EXISTING_FIELDS = ['numberInProject', 'projectShortName'] + EXISTING_FIELD_TYPES.keys()
+EXISTING_FIELDS = ['numberInProject', 'projectShortName'] + list(EXISTING_FIELD_TYPES.keys())
 
 class YouTrackException(Exception):
     def __init__(self, url, response, content):
@@ -35,7 +37,7 @@ class YouTrackException(Exception):
         if response.reason is not None:
             msg += ": " + response.reason
 
-        if response.has_key('content-type'):
+        if 'content-type' in response:
             ct = response["content-type"]
             if ct is not None and ct.find('text/html') == -1:
                 try:
@@ -46,7 +48,7 @@ class YouTrackException(Exception):
                     self.error = content
                     msg += ": " + self.error
 
-        if isinstance(msg, unicode):
+        if isinstance(msg, str):
             msg = msg.encode('utf-8')
 
         Exception.__init__(self, msg)
@@ -84,8 +86,6 @@ class YouTrackObject(object):
                 value = None
                 if not len(name):
                     continue
-                if isinstance(name, unicode):
-                    name = name.encode('utf-8')
                 values = c.getElementsByTagName('value')
                 # TODO: The code is needed to work correctly with localized YT
                 # value_ids = c.getElementsByTagName('valueId')
@@ -112,22 +112,32 @@ class YouTrackObject(object):
 
     def __repr__(self):
         _repr = ''
-        for k, v in self.__dict__.items():
+        for k, v in list(self.__dict__.items()):
             if k in ('youtrack', '_attribute_types'):
                 continue
-            if isinstance(k, unicode):
-                k = k.encode('utf-8')
-            if isinstance(v, unicode):
-                v = v.encode('utf-8')
-            _repr += k + ' = ' + str(v) + '\n'
+            _repr += '{0}={1}\n'.format(k,v)
         return _repr
+
+    def to_dict(self):
+        data = self.__dict__
+        try:
+            del data['youtrack']
+        except KeyError as e:
+            pass
+            #print('Failed to remove key. {0}'.format(e))
+        try:
+            del data['_attribute_types']
+        except KeyError as e:
+            pass
+            #print('Failed to remove key. {0}'.format(e))
+        return data
 
     def __iter__(self):
         for item in self.__dict__:
             if item == '_attribute_types':
                 continue
             attr = self.__dict__[item]
-            if isinstance(attr, basestring) or isinstance(attr, list) \
+            if isinstance(attr, str) or isinstance(attr, list) \
                     or getattr(attr, '__iter__', False):
                 yield item
 
@@ -173,7 +183,7 @@ class Issue(YouTrackObject):
         if hasattr(self, name):
             attrValue = self[name]
             if not isinstance(attrValue, list):
-                if isinstance(attrValue, unicode):
+                if isinstance(attrValue, str):
                     attrValue = attrValue.encode('utf-8')
                 if attrValue is None or not len(attrValue):
                     delattr(self, name)
@@ -207,7 +217,7 @@ class Issue(YouTrackObject):
         return voters
 
     def getComments(self):
-        #TODO: do not make rest request if issue was initied with comments
+        #TODO: do not make rest request if issue was initiated with comments
         if not hasattr(self, 'comments'):
             setattr(self, 'comments', self.youtrack.getComments(self.id))
         return self.comments
@@ -234,7 +244,7 @@ class Issue(YouTrackObject):
     @property
     def custom_fields(self):
         cf = []
-        for attr_name, attr_type in self._attribute_types.items():
+        for attr_name, attr_type in list(self._attribute_types.items()):
             if attr_type in ('CustomFieldValue', 'MultiUserField'):
                 cf.append(self[attr_name])
         return cf
@@ -267,7 +277,9 @@ class IssueChange(YouTrackObject):
         for field in xml.getElementsByTagName('field'):
             name = field.getAttribute('name')
             if name == 'updated':
-                self.updated = int(self._text(field.getElementsByTagName('value')[0]))
+                #self.updated = int(self._text(field.getElementsByTagName('value')[0]))
+                #Parse to datetime
+                self.updated = datetime.utcfromtimestamp(self._text(field.getElementsByTagName('value')[0]))
             elif name == 'updaterName':
                 self.updater_name = self._text(field.getElementsByTagName('value')[0])
             elif name == 'links':
@@ -495,9 +507,9 @@ class UserBundle(YouTrackObject):
                 try:
                     refined_user = self.youtrack.getUser(user.login)
                     all_users.append(refined_user)
-                except YouTrackException, e:
-                    print "Error on extracting user info for [" + str(user.login) + "] user won't be imported"
-                    print e
+                except YouTrackException as e:
+                    print("Error on extracting user info for [" + str(user.login) + "] user won't be imported")
+                    print(e)
         return list(set(all_users))
 
 
@@ -552,9 +564,9 @@ class BundleElement(YouTrackObject):
             value = self[elem]
             if value is None or not len(value):
                 continue
-            if isinstance(elem, unicode):
+            if isinstance(elem, str):
                 elem = elem.encode('utf-8')
-            if isinstance(value, unicode):
+            if isinstance(value, str):
                 value = value.encode('utf-8')
             result += ' %s=%s' % (escape(elem), quoteattr(str(value)))
         result += ">%s</%s>" % (escape(self.name.encode('utf-8')), self.element_name)
@@ -753,7 +765,7 @@ class WorkType(YouTrackObject):
         if self.id is not None:
             attributes += "<id>%s</id>" % self.id
 
-        if isinstance(attributes, unicode):
+        if isinstance(attributes, str):
             attributes = attributes.encode('utf-8')
 
         return "<workType>%s</workType>" % attributes
