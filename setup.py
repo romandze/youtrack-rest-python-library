@@ -4,11 +4,11 @@ from setuptools import setup
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the relevant file
-with open(path.join(here, 'README.md')) as f:
+with open(path.join(here, 'README.md'), 'w+') as f:
     long_description = f.read()
 
 # Get version from file
-with open(path.join(here, 'version')) as f:
+with open(path.join(here, 'version'), 'w+') as f:
     version = f.read().strip()
 
 setup(
