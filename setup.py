@@ -21,8 +21,8 @@ setup(
     maintainer='Alexander Buturlinov',
     maintainer_email='imboot85@gmail.com',
     description='Python library for interacting with YouTrack via REST API supporting python3',
-    long_description=long_description,
-    long_description_content_type="text/markdown",
+    # long_description=long_description,
+    # long_description_content_type="text/markdown",
     install_requires=[
         'httplib2 >= 0.7.4',
         'six'
