@@ -1,5 +1,5 @@
 from os import path
-from setuptools import setup
+from setuptools import setup, Extension
 
 here = path.abspath(path.dirname(__file__))
 
