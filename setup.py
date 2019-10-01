@@ -17,6 +17,7 @@ setup(
     python_requires='>3',
     packages=['youtrack', 'youtrack.sync'],
     url='https://github.com/JetBrains/youtrack-rest-python-library',
+    include_package_data=True,
     license='Apache 2.0',
     maintainer='Alexander Buturlinov',
     maintainer_email='imboot85@gmail.com',
