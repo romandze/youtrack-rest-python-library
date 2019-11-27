@@ -99,7 +99,7 @@ class Connection(object):
                 #    body = re.sub(self.__get_illegal_xml_chars_re(), b'', body)
 
                 headers['Content-Type'] = content_type
-                headers['Content-Length'] = len(body)
+                headers['Content-Length'] = str(len(body))
         elif method == 'GET' and content_type is not None:
             headers = headers.copy()
             headers['Accept'] = content_type
