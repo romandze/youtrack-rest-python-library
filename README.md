@@ -1,8 +1,3 @@
-[![obsolete project](http://jb.gg/badges/obsolete-flat-square.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
-
-# IMPORTANT: Deprecation notice
-This library uses an obsolete version of the YouTrack REST API. Starting from the release of YouTrack 2020.1, we will discontinue support for this version of the API. The YouTrack team will provide a new Python client library that uses the current version of the REST API no later than 29 Feb 2020.
-
 # Features modified
 
 * Ported to python3
