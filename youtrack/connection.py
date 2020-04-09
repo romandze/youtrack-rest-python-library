@@ -153,6 +153,17 @@ class Connection(object):
         else:
             return content
 
+    def _getXml(self, url):
+        response, content = self._req('GET', url)
+        if content is None or content == '':
+            raise youtrack.XmlException(url, response, content, 'Empty content')
+        else:
+            try:
+                return minidom.parseString(content)
+            except Exception, e:
+                raise youtrack.XmlException(url, response, content, str(e))
+
+
     def _get(self, url):
         return self._reqXml('GET', url)
 
@@ -198,13 +209,11 @@ class Connection(object):
                 self._get("/issue/%s/changes" % issue).getElementsByTagName('change')]
 
     def getComments(self, id):
-        response, content = self._req('GET', '/issue/' + id + '/comment')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/issue/' + id + '/comment')
         return [youtrack.Comment(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getAttachments(self, id):
-        response, content = self._req('GET', '/issue/' + id + '/attachment')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/issue/' + id + '/attachment')
         return [youtrack.Attachment(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getAttachmentContent(self, url):
@@ -321,8 +330,7 @@ class Connection(object):
 
 
     def getLinks(self, id, outwardOnly=False):
-        response, content = self._req('GET', '/issue/' + urllib.parse.quote(id) + '/link')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/issue/' + urllib.parse.quote(id) + '/link')
         res = []
         for c in [e for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]:
             link = youtrack.Link(c, self)
@@ -525,29 +533,25 @@ class Connection(object):
         return youtrack.Project(self._get("/admin/project/" + urllib.parse.quote(projectId)), self)
 
     def getProjectIds(self):
-        response, content = self._req('GET', '/admin/project/')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/project/')
         return [e.getAttribute('id') for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getProjectAssigneeGroups(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/assignee/group')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/project/' + urllib.parse.quote(projectId) + '/assignee/group')
         return [youtrack.Group(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getGroup(self, name):
         return youtrack.Group(self._get("/admin/group/" + urllib.parse.quote(name.encode('utf-8'))), self)
 
     def getGroups(self):
-        response, content = self._req('GET', '/admin/group')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/group')
         return [youtrack.Group(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def deleteGroup(self, name):
         return self._req('DELETE', "/admin/group/" + urllib.parse.quote(name.encode('utf-8')))
 
     def getUserGroups(self, userName):
-        response, content = self._req('GET', '/admin/user/%s/group' % urllib.parse.quote(userName.encode('utf-8')))
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/user/%s/group' % urllib.parse.quote(userName.encode('utf-8')))
         return [youtrack.Group(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def setUserGroup(self, user_name, group_name):
@@ -576,13 +580,11 @@ class Connection(object):
         return youtrack.Role(self._get("/admin/role/" + urllib.parse.quote(name)), self)
 
     def getRoles(self):
-        response, content = self._req('GET', '/admin/role')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/role')
         return [youtrack.Role(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getGroupRoles(self, group_name):
-        response, content = self._req('GET', '/admin/group/%s/role' % urllib.parse.quote(group_name))
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/group/%s/role' % urllib.parse.quote(group_name))
         return [youtrack.UserRole(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def createRole(self, role):
@@ -608,28 +610,23 @@ class Connection(object):
         return content
 
     def getRolePermissions(self, role):
-        response, content = self._req('GET', '/admin/role/%s/permission' % urllib.parse.quote(role.name))
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/role/%s/permission' % urllib.parse.quote(role.name))
         return [youtrack.Permission(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getPermissions(self):
-        response, content = self._req('GET', '/admin/permission')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/permission')
         return [youtrack.Permission(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getSubsystem(self, projectId, name):
-        response, content = self._req('GET', '/admin/project/' + projectId + '/subsystem/' + urllib.parse.quote(name))
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/project/' + projectId + '/subsystem/' + urllib.parse.quote(name))
         return youtrack.Subsystem(xml, self)
 
     def getSubsystems(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + projectId + '/subsystem')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/project/' + projectId + '/subsystem')
         return [youtrack.Subsystem(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getVersions(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/version?showReleased=true')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/project/' + urllib.parse.quote(projectId) + '/version?showReleased=true')
         return [self.getVersion(projectId, v.getAttribute('name')) for v in
                 xml.documentElement.getElementsByTagName('version')]
 
@@ -638,8 +635,7 @@ class Connection(object):
             self._get("/admin/project/" + urllib.parse.quote(projectId) + "/version/" + urllib.parse.quote(name)), self)
 
     def getBuilds(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/build')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/project/' + urllib.parse.quote(projectId) + '/build')
         return [youtrack.Build(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
 
@@ -649,9 +645,8 @@ class Connection(object):
         position = 0
         user_search_params = urllib.parse.urlencode(params)
         while True:
-            response, content = self._req('GET', "/admin/user/?start=%s&%s" % (str(position), user_search_params))
+            xml = self._getXml("/admin/user/?start=%s&%s" % (str(position), user_search_params))
             position += 10
-            xml = minidom.parseString(content)
             newUsers = [youtrack.User(e, self) for e in xml.documentElement.childNodes if
                         e.nodeType == Node.ELEMENT_NODE]
             if not len(newUsers): return users
@@ -659,8 +654,7 @@ class Connection(object):
 
 
     def getUsersTen(self, start):
-        response, content = self._req('GET', "/admin/user/?start=%s" % str(start))
-        xml = minidom.parseString(content)
+        xml = self._getXml("/admin/user/?start=%s" % str(start))
         users = [youtrack.User(e, self) for e in xml.documentElement.childNodes if
                  e.nodeType == Node.ELEMENT_NODE]
         return users
@@ -752,11 +746,10 @@ class Connection(object):
         path = '/issue'
         if projectId:
             path += '/byproject/' + urllib.parse.quote(projectId)
-        response, content = self._req('GET', path + "?" +
-                                             urllib.parse.urlencode({'after': str(after),
-                                                               'max': str(max),
-                                                               'filter': filter}))
-        xml = minidom.parseString(content)
+        url = path + "?" + urllib.parse.urlencode({'after': str(after),
+                                                   'max': str(max),
+                                                   'filter': filter})
+        xml = self._getXml(url)
         return [youtrack.Issue(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getNumberOfIssues(self, filter = '', waitForServer=True):
@@ -776,8 +769,7 @@ class Connection(object):
 
 
     def getAllSprints(self,agileID):
-        response, content = self._req('GET', '/agile/' + agileID + "/sprints?")
-        xml = minidom.parseString(content)
+        xml = self._getXml('/agile/' + agileID + "/sprints?")
         return [(e.getAttribute('name'),e.getAttribute('start'),e.getAttribute('finish')) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def getAllIssues(self, filter = '', after = 0, max = 999999, withFields = ()):
@@ -785,14 +777,11 @@ class Connection(object):
                     [('after',str(after)),
                     ('max',str(max)),
                     ('filter',filter)]
-        response, content = self._req('GET', '/issue' + "?" +
-                                             urllib.parse.urlencode(urlJobby))
-        xml = minidom.parseString(content)
+        xml = self._getXml('/issue' + "?" + urllib.parse.urlencode(urlJobby))
         return [youtrack.Issue(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def exportIssueLinks(self):
-        response, content = self._req('GET', '/export/links')
-        xml = minidom.parseString(content)
+        xml = self._get('/export/links')
         return [youtrack.Link(e, self) for e in xml.documentElement.childNodes if e.nodeType == Node.ELEMENT_NODE]
 
     def executeCommand(self, issueId, command, comment=None, group=None, run_as=None, disable_notifications=False):
@@ -827,8 +816,7 @@ class Connection(object):
         return youtrack.CustomField(self._get("/admin/customfield/field/" + urllib.parse.quote(name.encode('utf-8'))), self)
 
     def getCustomFields(self):
-        response, content = self._req('GET', '/admin/customfield/field')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/customfield/field')
         return [self.getCustomField(e.getAttribute('name')) for e in xml.documentElement.childNodes if
                 e.nodeType == Node.ELEMENT_NODE]
 
@@ -870,8 +858,7 @@ class Connection(object):
             , self)
 
     def getProjectCustomFields(self, projectId):
-        response, content = self._req('GET', '/admin/project/' + urllib.parse.quote(projectId) + '/customfield')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/project/' + urllib.parse.quote(projectId) + '/customfield')
         return [self.getProjectCustomField(projectId, e.getAttribute('name')) for e in
                 xml.getElementsByTagName('projectCustomField')]
 
@@ -897,8 +884,7 @@ class Connection(object):
         self._req('DELETE', '/admin/project/' + urllib.parse.quote(project_id) + "/customfield/" + urllib.parse.quote(pcf_name))
 
     def getIssueLinkTypes(self):
-        response, content = self._req('GET', '/admin/issueLinkType')
-        xml = minidom.parseString(content)
+        xml = self._getXml('/admin/issueLinkType')
         return [youtrack.IssueLinkType(e, self) for e in xml.getElementsByTagName('issueLinkType')]
 
     def createIssueLinkTypes(self, issueLinkTypes):

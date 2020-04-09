@@ -28,6 +28,26 @@ EXISTING_FIELD_TYPES = {
 
 EXISTING_FIELDS = ['numberInProject', 'projectShortName'] + list(EXISTING_FIELD_TYPES.keys())
 
+
+class XmlException(Exception):
+    def __init__(self, url, response, content, error):
+        self.response = response
+        self.content = content
+        self.error = error
+        msg = 'XMl parsing error for [' + url + ']: ' + str(response.status)
+        msg += '\nerror: ' + error
+
+        if content is None or content == '':
+            msg += '\nxml: Empty content'
+        else:
+            msg += '\nxml: ' + content
+
+        if isinstance(msg, unicode):
+            msg = msg.encode('utf-8')
+
+        Exception.__init__(self, msg)
+
+
 class YouTrackException(Exception):
     def __init__(self, url, response, content):
         self.response = response
