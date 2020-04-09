@@ -14,7 +14,7 @@ with open(path.join(here, 'version'), 'r') as f:
 setup(
     name='youtrack',
     version=version,
-    python_requires='>3',
+    python_requires='>=3.5',
     packages=['youtrack', 'youtrack.sync'],
     url='https://github.com/JetBrains/youtrack-rest-python-library',
     include_package_data=True,
