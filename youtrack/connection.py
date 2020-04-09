@@ -160,7 +160,7 @@ class Connection(object):
         else:
             try:
                 return minidom.parseString(content)
-            except Exception, e:
+            except Exception as e:
                 raise youtrack.XmlException(url, response, content, str(e))
 
 
