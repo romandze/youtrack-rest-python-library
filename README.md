@@ -1,3 +1,10 @@
+# Deprecation Notice
+This package is deprecated and will not work with YouTrack 2021.3 and later.
+
+Please consider using [OpenAPI](https://www.jetbrains.com/help/youtrack/devportal/youtrack-openapi-specification.html) support in YouTrack to generate client code. This is not a drop-in replacement, but it should be enough to get you started.
+
+The package will also receive little support and maintenance, if any.
+
 # Features modified
 
 * Ported to python3
