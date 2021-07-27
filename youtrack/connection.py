@@ -43,7 +43,7 @@ class Connection(object):
                                       proxy_info=proxy_info)
 
         self.url = url.rstrip('/')
-        self.baseUrl = self.url + "/rest"
+        self.baseUrl = self.url + "/api"
         self.headers = dict()
         self._last_credentials = None
 
