@@ -7,13 +7,8 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), 'r') as f:
     long_description = f.read()
 
-# Get version from file
-with open(path.join(here, 'version'), 'r') as f:
-    version = f.read().strip()
-
 setup(
     name='youtrack',
-    version=version,
     python_requires='>3',
     packages=['youtrack', 'youtrack.sync'],
     url='https://github.com/romandze/youtrack-rest-python-library',
