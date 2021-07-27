@@ -16,7 +16,7 @@ setup(
     version=version,
     python_requires='>3',
     packages=['youtrack', 'youtrack.sync'],
-    url='https://github.com/JetBrains/youtrack-rest-python-library',
+    url='https://github.com/romandze/youtrack-rest-python-library',
     include_package_data=True,
     license='Apache 2.0',
     maintainer='Alexander Buturlinov',
